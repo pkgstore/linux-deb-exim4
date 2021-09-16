@@ -1,0 +1,44 @@
+From c819f3bcad02bcb06004ae2ad135b68fab0ae888 Mon Sep 17 00:00:00 2001
+From: Jeremy Harris <jgh146exb@wizmail.org>
+Date: Wed, 7 Jul 2021 22:19:07 +0100
+Subject: [PATCH 5/5] Fix tainted message for fakereject
+
+(cherry picked from commit a9ac2d7fc219e41a353abf1f599258b9b9d21b7e)
+---
+ doc/ChangeLog | 4 ++++
+ src/acl.c         | 4 +++-
+ 2 files changed, 7 insertions(+), 1 deletion(-)
+
+diff --git a/doc/ChangeLog b/doc/ChangeLog
+index e60c1cad5..3e93f653f 100644
+--- a/doc/ChangeLog
++++ b/doc/ChangeLog
+@@ -227,6 +227,10 @@ JH/53 Bug 2743: fix immediate-delivery via named queue.  Previously this would
+       fail with a taint-check on the spoolfile name, and leave the message
+       queued.
+ 
++JH/57 Fix control=fakreject for a custom message containing tainted data.
++      Previously this resulted in a log complaint, due to a re-expansion present
++      since fakereject was originally introduced.
++
+ 
+ Exim version 4.94
+ -----------------
+diff --git a/src/acl.c b/src/acl.c
+index 7061230b4..65324405c 100644
+--- a/src/acl.c
++++ b/src/acl.c
+@@ -3137,7 +3137,9 @@ for (; cb; cb = cb->next)
+ 	    {
+ 	    const uschar *pp = p + 1;
+ 	    while (*pp) pp++;
+-	    fake_response_text = expand_string(string_copyn(p+1, pp-p-1));
++	    /* The entire control= line was expanded at top so no need to expand
++	    the part after the / */
++	    fake_response_text = string_copyn(p+1, pp-p-1);
+ 	    p = pp;
+ 	    }
+ 	   else /* Explicitly reset to default string */
+-- 
+2.30.2
+

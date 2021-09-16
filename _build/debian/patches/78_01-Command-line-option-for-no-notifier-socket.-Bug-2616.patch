@@ -1,0 +1,198 @@
+From 99ea5f6faeaf714e34bbcd75fdc50cc94dc7a1c8 Mon Sep 17 00:00:00 2001
+From: Jeremy Harris <jgh146exb@wizmail.org>
+Date: Fri, 10 Jul 2020 13:55:25 +0100
+Subject: [PATCH] Command-line option for no notifier socket.  Bug 2616
+
+---
+ doc/doc-docbook/spec.xfpt             | 33 +++++++++++++++++++++++++--
+ doc/NewStuff                  |  2 ++
+ src/daemon.c                      |  5 ++++
+ src/exim.c                        |  9 +++++++-
+ test/scripts/0999-EXP-Queue-Ramp/0999 |  2 +-
+ 5 files changed, 47 insertions(+), 4 deletions(-)
+
+--- a/doc/NewStuff
++++ b/doc/NewStuff
+@@ -2,14 +2,20 @@ New Features in Exim
+ --------------------
+ 
+ This file contains descriptions of new features that have been added to Exim.
+ Before a formal release, there may be quite a lot of detail so that people can
+ test from the snapshots or the Git before the documentation is updated. Once
+ the documentation is updated, this file is reduced to a short list.
+ 
++Cherrypicked from GIT master:
++------------
++
++10. A command-line option to have a daemon not create a notifier socket.
++
++
+ Version 4.95
+ ------------
+ 
+  1. The fast-ramp two phase queue run support, previously experimental, is
+     now supported by default.
+ 
+  2. The native SRS support, previously experimental, is now supported. It is
+--- a/src/daemon.c
++++ b/src/daemon.c
+@@ -1140,14 +1140,19 @@ static void
+ daemon_notifier_socket(void)
+ {
+ int fd;
+ const uschar * where;
+ struct sockaddr_un sa_un = {.sun_family = AF_UNIX};
+ int len;
+ 
++if (!notifier_socket || !*notifier_socket)
++  {
++  DEBUG(D_any) debug_printf("-oY used so not creating notifier socket\n");
++  return;
++  }
+ if (override_local_interfaces && !override_pid_file_path)
+   {
+   DEBUG(D_any)
+     debug_printf("-oX used without -oP so not creating notifier socket\n");
+   return;
+   }
+ 
+--- a/src/exim.c
++++ b/src/exim.c
+@@ -3231,14 +3231,21 @@ on the second character (the one after '
+       /* Limits: Is there a real limit we want here?  1024 is very arbitrary. */
+ 
+       case 'X':
+ 	if (*argrest) badarg = TRUE;
+ 	else override_local_interfaces = string_copy_taint(exim_str_fail_toolong(argv[++i], 1024, "-oX"), TRUE);
+ 	break;
+ 
++      /* -oY: Override creation of daemon notifier socket */
++
++      case 'Y':
++	if (*argrest) badarg = TRUE;
++	else notifier_socket = NULL;
++	break;
++
+       /* Unknown -o argument */
+ 
+       default:
+ 	badarg = TRUE;
+       }
+     break;
+ 
+@@ -4818,15 +4825,15 @@ if (originator_login == NULL || f.runnin
+     log_write(0, LOG_MAIN|LOG_PANIC_DIE, "Failed to get user name for uid %d",
+       (int)real_uid);
+   }
+ 
+ /* Ensure that the user name is in a suitable form for use as a "phrase" in an
+ RFC822 address.*/
+ 
+-originator_name = parse_fix_phrase(originator_name, Ustrlen(originator_name));
++originator_name = US parse_fix_phrase(originator_name, Ustrlen(originator_name));
+ 
+ /* If a message is created by this call of Exim, the uid/gid of its originator
+ are those of the caller. These values are overridden if an existing message is
+ read in from the spool. */
+ 
+ originator_uid = real_uid;
+ originator_gid = real_gid;
+--- a/doc/spec.txt
++++ b/doc/spec.txt
+@@ -4189,14 +4189,27 @@ brief message about itself and exits.
+ 
+     This option is relevant only when the -bd (start listening daemon) option
+     is also given. It controls which ports and interfaces the daemon uses.
+     Details of the syntax, and how it interacts with configuration file
+     options, are given in chapter 13. When -oX is used to start a daemon, no
+     pid file is written unless -oP is also present to specify a pid filename.
+ 
++-oY
++
++    This option controls the creation of an inter-process communications
++    endpoint by the Exim daemon.  It is only relevant when the -bd
++    (start listening daemon) option is also given.  Normally the daemon
++    creates this socket, unless a oX and no -oP option is also
++    present.  If this option is given then the socket will not be created.
++    This could be required if the system is running multiple daemons.
++    
++    The socket is currently used for
++      * fast ramp-up of queue runner processes
++      * obtaining a current queue size
++
+ -pd
+ 
+     This option applies when an embedded Perl interpreter is linked with Exim
+     (see chapter 12). It overrides the setting of the perl_at_start option,
+     forcing the starting of the interpreter to be delayed until it is needed.
+ 
+ -ps
+@@ -11733,14 +11746,16 @@ $queue_name
+ 
+     The name of the spool queue in use; empty for the default queue.
+ 
+ $queue_size
+ 
+     This variable contains the number of messages queued. It is evaluated on
+     demand, but no more often than once every minute.
++    If there is no daemon notifier socket open, the value will be
++    an empty string.
+ 
+ $r_...
+ 
+     Values can be placed in these variables by the set option of a router. They
+     can be given any name that starts with $r_. The values persist for the
+     address being handled through subsequent routers and the eventual
+     transport.
+@@ -15227,18 +15242,20 @@ driver.
+ +-----------------------------------------------------------------------------+
+ 
+ This option gives the name for a unix-domain socket on which the daemon listens
+ for work and information-requests. Only installations running multiple daemons
+ sharing a spool directory should need to modify the default.
+ 
+ The option is expanded before use. If the platform supports Linux-style
+-abstract socket names, the result is used with a nul byte prefixed. Otherwise,
+-it should be a full path name and use a directory accessible to Exim.
++abstract socket names, the result is used with a nul byte prefixed.
++Otherwise, if nonempty, it should be a full path name and use a directory
++accessible to Exim.
+ 
+-If the Exim command line uses a -oX option and does not use -oP then a notifier
++If this option is set as empty, or the command line -oY option is used, or
++the command line uses a -oX option and does not use -oP, then a notifier
+ socket is not created.
+ 
+ +-----------------------------------------------------------------------------+
+ |               |Use:  |  Type:   |Default: +no_sslv2 +no_sslv3 +single_dh_use|
+ |openssl_options| main |  string  |               +no_ticket +no_renegotiation|
+ |               |      |   list   |                                           |
+ +-----------------------------------------------------------------------------+
+--- a/doc/exim.8
++++ b/doc/exim.8
+@@ -1445,14 +1445,25 @@ the \fBsmtp_receive_timeout\fP option; i
+ This option has exactly the same effect as \fB\-v\fP.
+ .TP 10
+ \fB\-oX\fP <\fInumber or string\fP>
+ This option is relevant only when the \fB\-bd\fP (start listening daemon) option
+ is also given. It controls which ports and interfaces the daemon uses. When \fB\-oX\fP is used to start a daemon, no pid
+ file is written unless \fB\-oP\fP is also present to specify a pid filename.
+ .TP 10
++\fB\-oY\fP
++This option controls the creation of an inter-process communications endpoint
++by the Exim daemon. It is only relevant when the \fB\-bd\fP (start listening
++daemon) option is also given.
++Normally the daemon creates this socket, unless a \fB\-oX\fP and no \fB\-oP\fP
++option is also present.
++If this option is given then the socket will not be created.  This could be
++required if the system is running multiple daemons.
++The socket is currently used for fast ramp-up of queue runner processes and
++obtaining a current queue size.
++.TP 10
+ \fB\-pd\fP
+ This option applies when an embedded Perl interpreter is linked with Exim. It overrides the setting of the \fBperl_at_start\fP
+ option, forcing the starting of the interpreter to be delayed until it is
+ needed.
+ .TP 10
+ \fB\-ps\fP
+ This option applies when an embedded Perl interpreter is linked with Exim. It overrides the setting of the \fBperl_at_start\fP

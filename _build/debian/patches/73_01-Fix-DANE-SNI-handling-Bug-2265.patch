@@ -1,0 +1,36 @@
+From e8ac8be0a3d56ba0a189fb970c339ac6e84769be Mon Sep 17 00:00:00 2001
+From: "Heiko Schlittermann (HS12-RIPE)" <hs@schlittermann.de>
+Date: Mon, 3 May 2021 15:53:28 +0200
+Subject: [PATCH] Fix DANE + SNI handling (Bug 2265)
+
+Broken in d8e99d6047e709b35eabb1395c2046100d1a1dda
+Thanks to JGH and Wolfgang Breyha for contributions.
+---
+ src/transports/smtp.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/src/transports/smtp.c b/src/transports/smtp.c
+index f26e2337a..9ee6a578a 100644
+--- a/src/transports/smtp.c
++++ b/src/transports/smtp.c
+@@ -2015,7 +2015,7 @@ if (continue_hostname && continue_proxy_cipher)
+       {
+       case OK:		sx->conn_args.dane = TRUE;
+ 			ob->tls_tempfail_tryclear = FALSE;	/* force TLS */
+-			ob->tls_sni = sx->first_addr->domain;	/* force SNI */
++                        ob->tls_sni = sx->conn_args.host->name; /* force SNI */
+ 			break;
+       case FAIL_FORCED:	break;
+       default:		set_errno_nohost(sx->addrlist, ERRNO_DNSDEFER,
+@@ -2097,7 +2097,7 @@ if (!continue_hostname)
+ 	  {
+ 	  case OK:		sx->conn_args.dane = TRUE;
+ 				ob->tls_tempfail_tryclear = FALSE;	/* force TLS */
+-				ob->tls_sni = sx->first_addr->domain;	/* force SNI */
++				ob->tls_sni = sx->conn_args.host->name; /* force SNI */
+ 				break;
+ 	  case FAIL_FORCED:	break;
+ 	  default:		set_errno_nohost(sx->addrlist, ERRNO_DNSDEFER,
+-- 
+2.30.2
+

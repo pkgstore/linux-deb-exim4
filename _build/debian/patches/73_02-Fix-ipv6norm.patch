@@ -1,0 +1,47 @@
+From ed64b5c2f0f44db27ae48128fc97d5ad8406a28e Mon Sep 17 00:00:00 2001
+From: Jeremy Harris <jgh146exb@wizmail.org>
+Date: Tue, 4 May 2021 13:06:31 +0100
+Subject: [PATCH 2/2] Fix ${ipv6norm:}
+
+(cherry picked from commit 8b4b6ac90766b11fa74fa3001778b49456adbe42)
+---
+ doc/ChangeLog        | 3 +++
+ src/host.c               | 4 ++--
+ test/scripts/0000-Basic/0002 | 2 +-
+ test/stdout/0002             | 2 +-
+ 4 files changed, 7 insertions(+), 4 deletions(-)
+
+--- a/doc/ChangeLog
++++ b/doc/ChangeLog
+@@ -218,10 +218,13 @@
+       executed child processes (if any).
+ 
+ QS/04 Always die if requested from internal logging, even is logging is
+       disabled.
+ 
++JH/52 Fix ${ip6norm:} operator.  Previously, any trailing line text was dropped,
++      making it unusable in complex expressions.
++
+ 
+ Exim version 4.94
+ -----------------
+ 
+ JH/01 Avoid costly startup code when not strictly needed.  This reduces time
+--- a/src/host.c
++++ b/src/host.c
+@@ -1195,13 +1195,13 @@
+     }
+   while (*++c != ':') ;
+   c++;
+   }
+ 
+-c[-1] = '\0';	/* drop trailing colon */
++*--c = '\0';	/* drop trailing colon */
+ 
+-/* debug_printf("%s: D k %d <%s> <%s>\n", __FUNCTION__, k, d, d + 2*(k+1)); */
++/* debug_printf("%s: D k %d <%s> <%s>\n", __FUNCTION__, k, buffer, buffer + 2*(k+1)); */
+ if (k >= 0)
+   {			/* collapse */
+   c = d + 2*(k+1);
+   if (d == buffer) c--;	/* need extra colon */
+   *d++ = ':';	/* 1st 0 */

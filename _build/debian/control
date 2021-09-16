@@ -29,7 +29,6 @@ Build-Depends:
  libperl-dev,
  libpq-dev,
  libsasl2-dev,
- libspf2-dev,
  libsqlite3-dev,
  libx11-dev,
  libxaw7-dev,
@@ -46,7 +45,10 @@ Priority: optional
 Breaks:
  exim4-daemon-custom (<<${Upstream-Version}),
  exim4-daemon-heavy (<<${Upstream-Version}),
- exim4-daemon-light (<<${Upstream-Version})
+ exim4-daemon-light (<<${Upstream-Version}),
+ exim4-daemon-custom (<< 4.94.2-6~),
+ exim4-daemon-heavy (<< 4.94.2-6~),
+ exim4-daemon-light (<< 4.94.2-6~)
 Conflicts: exim, exim-tls
 Replaces:
  exim,
@@ -63,8 +65,7 @@ Depends:
  ${misc:Depends},
  ${shlibs:Depends}
 # psmisc just for exiwhat.
-# mailx for cronjob
-Recommends: bsd-mailx | mailx, psmisc
+Recommends: mailx, psmisc
 Suggests:
  exim4-doc-html | exim4-doc-info,
  eximon4,

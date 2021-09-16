@@ -1,0 +1,118 @@
+From 66392b270e3a6c8202e4626d43bbc9b77545ae23 Mon Sep 17 00:00:00 2001
+From: "Heiko Schlittermann (HS12-RIPE)" <hs@schlittermann.de>
+Date: Sat, 15 May 2021 13:40:46 +0200
+Subject: [PATCH 4/4] Fix logging with build-time config and empty elements
+ (Closes 2733)
+
+---
+ src/log.c | 49 +++++++++++++++++++++++--------------------------
+ 1 file changed, 23 insertions(+), 26 deletions(-)
+
+diff --git a/src/log.c b/src/log.c
+index 716bec553..1d308d008 100644
+--- a/src/log.c
++++ b/src/log.c
+@@ -454,15 +454,15 @@ return fd;
+ *                Open a log file                 *
+ *************************************************/
+ 
+ /* This function opens one of a number of logs, creating the log directory if
+ it does not exist. This may be called recursively on failure, in order to open
+ the panic log.
+ 
+-The directory is in the static variable file_path. This is static so that it
++The directory is in the static variable file_path. This is static so that
+ the work of sorting out the path is done just once per Exim process.
+ 
+ Exim is normally configured to avoid running as root wherever possible, the log
+ files must be owned by the non-privileged exim user. To ensure this, first try
+ an open without O_CREAT - most of the time this will succeed. If it fails, try
+ to create the file; if running as root, this must be done in a subprocess to
+ avoid races.
+@@ -731,42 +731,40 @@ if (*ss)
+   for (logging_mode = 0;
+        s = string_nextinlist(&ss, &sep, log_buffer, LOG_BUFFER_SIZE); )
+     {
+     if (Ustrcmp(s, "syslog") == 0)
+       logging_mode |= LOG_MODE_SYSLOG;
+     else if (!(logging_mode & LOG_MODE_FILE))  /* no file yet */
+       {
+-      /* If a non-empty path is given, use it */
+-
+-      if (*s)
+-	file_path = string_copy(s);
+-
+-      /* If handling the config option, and the element is empty, we want to use
+-      the first non-empty, non-syslog item in LOG_FILE_PATH, if there is one,
+-      since the value of log_file_path may have been set at runtime. If there is
+-      no such item, use the ultimate default in the spool directory. */
+-
+-      else if (*log_file_path && LOG_FILE_PATH[0])
+-	{
+-	ss = US LOG_FILE_PATH;
+-	continue;
+-	}
+-
+       logging_mode |= LOG_MODE_FILE;
++      if (*s) file_path = string_copy(s);     /* If a non-empty path is given, use it */
+       }
+-    else
+-      if (multiple) *multiple = TRUE;
++    else if (multiple) *multiple = TRUE;
+     }
+-  else
+-    logging_mode = LOG_MODE_FILE;
++else
++  logging_mode = LOG_MODE_FILE;
+ 
+ /* Set up the ultimate default if necessary. */
+ 
+ if (logging_mode & LOG_MODE_FILE  &&  !*file_path)
+-  file_path = string_sprintf("%s/log/%%slog", spool_directory);
++  if (LOG_FILE_PATH[0])
++    {
++      /* If we still do not have a file_path, we take
++      the first non-empty, non-syslog item in LOG_FILE_PATH, if there is
++      one.  If there is no such item, use the ultimate default in the
++      spool directory. */
++
++       for (ss = US LOG_FILE_PATH;
++            s = string_nextinlist(&ss, &sep, log_buffer, LOG_BUFFER_SIZE);)
++          {
++            if (*s != '/') continue;
++            file_path = string_copy(s);
++          }
++    }
++  else file_path = string_sprintf("%s/log/%%slog", spool_directory);
+ }
+ 
+ 
+ void
+ mainlog_close(void)
+ {
+ /* avoid closing it if it is closed already or if we do not see a chance
+@@ -881,18 +879,17 @@ the process. */
+ if (!path_inspected)
+   {
+   BOOL multiple = FALSE;
+   int old_pool = store_pool;
+ 
+   store_pool = POOL_PERM;
+ 
+-  /* If nothing has been set, don't waste effort... the default values for the
+-  statics are file_path="" and logging_mode = LOG_MODE_FILE. */
+-
+-  if (*log_file_path) set_file_path(&multiple);
++  /* make sure that we have a valid log file path in "file_path",
++  the open_log() later relies on it */
++  set_file_path(&multiple);
+ 
+   /* If no modes have been selected, it is a major disaster */
+ 
+   if (logging_mode == 0)
+     die(US"Neither syslog nor file logging set in log_file_path",
+         US"Unexpected logging failure");
+ 
+-- 
+2.30.2
+
