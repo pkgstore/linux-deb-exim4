@@ -1,3 +1,10 @@
+exim4 (4.94.2-100) unstable; urgency=medium
+
+  * COMMIT: 70388a868997b25e0e61ae0b835e63ab9f01469c.
+  * UPD: Move to DEB Store.
+
+ -- Package Store <kitsune.solar@gmail.com>  Fri, 17 Sep 2021 07:05:32 +0000
+
 exim4 (4.94.2-7) unstable; urgency=medium
 
   * 73_05-Fix-tainted-message-for-fakereject.patch from upstream +fixes
