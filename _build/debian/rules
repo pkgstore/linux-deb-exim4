@@ -213,7 +213,7 @@ override_dh_auto_install-indep: debian/README.Debian
 
 # only called manually by maintainer before upload.
 update-mtaconflicts:
-	which grep-aptavail > /dev/null && \
+	command -v grep-aptavail > /dev/null && \
 		grep-aptavail --show-field=Package --field=Provides \
 		mail-transport-agent --no-field-names \
 		| grep -v exim | sort -u | \

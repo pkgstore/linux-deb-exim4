@@ -183,7 +183,7 @@ fi
 #  Disable orphaned inetd-entries from exim (v3) caused by bugs #202670
 #  and #182206.
 if [ "$1" = "configure" ] &&\
-	which update-inetd > /dev/null && which exim > /dev/null && \
+	command -v update-inetd > /dev/null && command -v exim > /dev/null && \
 	[ -f /etc/inetd.conf ] && \
    	grep -E -q '^smtp[[:space:]]*stream[[:space:]]*tcp[[:space:]]*nowait[[:space:]]*mail[[:space:]]*/usr/sbin/+exim exim -bs' /etc/inetd.conf
 then

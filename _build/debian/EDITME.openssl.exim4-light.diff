@@ -1,7 +1,7 @@
---- EDITME.exim4-light.gnutls	2019-10-19 11:08:31.184808612 +0000
-+++ EDITME.exim4-light	2019-10-19 11:09:12.180032579 +0000
-@@ -212,21 +212,21 @@ SPOOL_DIRECTORY=/var/spool/exim4
- # If you are buliding with TLS, the library configuration must be done:
+--- EDITME.exim4-light.gnutls	2021-07-17 11:47:37.373967962 +0200
++++ EDITME.exim4-light	2021-07-17 11:48:29.937189319 +0200
+@@ -211,21 +211,21 @@ SPOOL_DIRECTORY=/var/spool/exim4
+ # If you are building with TLS, the library configuration must be done:
  
  # Uncomment this if you are using OpenSSL
 -# USE_OPENSSL=yes
